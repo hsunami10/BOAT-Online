@@ -1,0 +1,27 @@
+{
+  "name": "boat-online",
+  "version": "1.0.0",
+  "description": "multiplayer game",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hsunami10/BOAT-Online.git"
+  },
+  "author": "Michael Hsu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hsunami10/BOAT-Online/issues"
+  },
+  "homepage": "https://github.com/hsunami10/BOAT-Online#readme",
+  "devDependencies": {
+    "nodemon": "^1.11.0"
+  },
+  "dependencies": {
+    "express": "^4.14.1",
+    "pg": "^6.1.2",
+    "socket.io": "^1.7.3"
+  }
+}
