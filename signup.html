@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>BOAT Online: Sign Up</title>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+</head>
+<body>
+
+	<h1>Sign Up</h1>
+
+	<!--action="startmenu.html">-->
+	<form id="sign-up-form">
+		<label id="username-label">Username</label><br>
+		<input type="text" id="username" placeholder="Username"></input><br>
+		<label id="password-label">Password</label><br>
+		<input type="password" id="password" placeholder="Password"></input><br>
+		<label id="password-label">Confirm Password</label><br>
+		<input type="password" id="retype-password" placeholder="Retype Password"></input><br>
+		<p id="alert"></p>
+		<button type="submit">Sign Up</button>
+	</form>
+
+		<a href="startmenu.html"><button>Back</button></a>
+
+	<script>
+		var socket = io();
+
+		var $username = $('#username');
+		var $password = $('#password');
+		var $retype_password = $('#retype-password');
+		var $alert = $('p');
+
+		$('#sign-up-form').submit(function(e) {
+
+			if($username.val() === '' || $password.val() === '' || $retype_password.val() === '') {
+				e.preventDefault();
+				$alert.text('Fields cannot be left empty.');
+			}
+			else if($password.val() !== $retype_password.val()) {
+				e.preventDefault();
+				$alert.text('Passwords must match.');
+				$password.css('border-color', 'red');
+				$retype_password.css('border-color', 'red');
+			}
+			else {
+				e.preventDefault();
+				socket.emit('sign-up', {username: $username.val(), password: $password.val()});
+			}
+		});
+
+		socket.on('sign-up-response', function(data) {
+			if(data.success) {
+				$username.val('');
+				$password.val('');
+				$retype_password.val('');
+				$alert.text('Sign up successful.');
+			}
+			else
+				$alert.text('Username already taken.');
+		});
+	</script>
+</body>
+</html>

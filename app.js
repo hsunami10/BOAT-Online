@@ -8,9 +8,21 @@ var path = require('path');
 var pg = require('pg');
 
 // Connect to PostgreSQL Database
-var connectionString = process.env.DATABASE_URL || 'postgres://postgres:ewoks4life@localhost:5432/boatonline';
+var connectionString = process.env.DATABASE_URL || 'postgres://michaelhsu:ewoks4life@localhost:5432/boatonline';
 var client = new pg.Client(connectionString);
 client.connect();
+
+// Query example
+//client.query('INSERT INTO account VALUES (\'hsunami\', \'ewoks4life\')');
+/*
+var accounts = client.query('SELECT * FROM account WHERE username = \'hsunami\'');
+accounts.on('row', function(row) {
+	if(row.username === 'hsunami')
+		console.log('hello');
+});
+accounts.on('end', function() {
+	client.end();
+});*/
 
 // Use middleware
 app.use(express.static(path.join(__dirname + '/public')));
@@ -18,6 +30,12 @@ app.use(express.static(path.join(__dirname + '/public')));
 // Routing
 app.get('/', function(req, res) {
 	res.sendFile(path.join(__dirname + '/startmenu.html'));
+});
+app.get('/startmenu.html', function(req, res) {
+	res.sendFile(path.join(__dirname + '/startmenu.html'));
+});
+app.get('/signup.html', function(req, res) {
+	res.sendFile(path.join(__dirname + '/signup.html'));
 });
 
 var port = process.env.PORT || 8888;
@@ -64,8 +82,6 @@ var GameObject = function() {
 			else
 				self.spdY = -self.maxSpd;
 		}
-		//if(Math.sqrt(Math.pow(self.spdX, 2) + Math.pow(self.spdY, 2)) > self.maxSpd)
-
 	};
 	return self;
 };
@@ -166,6 +182,24 @@ Ball.update = function() {
 	return pack;
 };
 
+// Sign up checks
+var isUsernameTaken = function(data, cb) {
+	var query = client.query('SELECT * FROM account');
+	var match = false;
+
+	// If there's an existing username, then fail sign up
+	query.on('row', function(row) {
+		if(row.username === data.username)
+			match = true;
+	});
+	query.on('end', function() {
+		if(match)
+			cb(false);
+		else
+			cb(true);
+	});
+};
+
 io.on('connection', function(socket) {
 	console.log('User connected');
 	numOfPlayers += 1;
@@ -179,6 +213,21 @@ io.on('connection', function(socket) {
 	else
 		playerNumber = playerNumber % 4;
 	Ball.onConnect(socket, playerNumber);
+
+
+
+	socket.on('sign-up', function(data) {
+		isUsernameTaken(data, function(res) {
+			if(res) {
+				client.query('INSERT INTO account VALUES (\'' + data.username + '\', \'' + data.password + '\')');
+				socket.emit('sign-up-response', {success: true}); // account for this in html files
+			}
+			else
+				socket.emit('sign-up-response', {success: false});
+		});
+	});
+
+
 
 	socket.on('disconnect', function() {
 		console.log('User disconnected');
