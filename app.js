@@ -12,18 +12,6 @@ var connectionString = process.env.DATABASE_URL || 'postgres://michaelhsu:ewoks4
 var client = new pg.Client(connectionString);
 client.connect();
 
-// Query example
-//client.query('INSERT INTO account VALUES (\'hsunami\', \'ewoks4life\')');
-/*
-var accounts = client.query('SELECT * FROM account WHERE username = \'hsunami\'');
-accounts.on('row', function(row) {
-	if(row.username === 'hsunami')
-		console.log('hello');
-});
-accounts.on('end', function() {
-	client.end();
-});*/
-
 // Use middleware
 app.use(express.static(path.join(__dirname + '/public')));
 
@@ -220,7 +208,7 @@ io.on('connection', function(socket) {
 		isUsernameTaken(data, function(res) {
 			if(res) {
 				client.query('INSERT INTO account VALUES (\'' + data.username + '\', \'' + data.password + '\')');
-				socket.emit('sign-up-response', {success: true}); // account for this in html files
+				socket.emit('sign-up-response', {success: true});
 			}
 			else
 				socket.emit('sign-up-response', {success: false});
