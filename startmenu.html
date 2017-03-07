@@ -2,7 +2,6 @@
 <html>
 <head>
 	<title>BOAT Online</title>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
   	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
   	<script src="/socket.io/socket.io.js"></script>
@@ -10,15 +9,16 @@
 </head>
 <body>
 
-	<div id="signInDiv">
+	<form id="signInDiv">
 		<h1>BOAT Online</h1>
 		<label id="username-label">Username</label><br>
 		<input type="text" id="signInDiv-username" placeholder="Username"></input><br>
 		<label id="password-label">Password</label><br>
 		<input type="password" id="signInDiv-password" placeholder="Password"></input><br>
 		<p>Don't have an account? Sign up <a href="signup.html">here</a>.</p>
+		<p id="alert"></p>
 		<button type="submit">Log In</button><br>
-	</div>
+	</form>
 
 	<div id="gameDiv" style="display: none;">
 		<canvas id="ctx" style="border: 1px solid black;"></canvas>
@@ -26,13 +26,31 @@
 
 	<script>
 		// Initialize socket
-		var socket = io();
+		var socket = io('/game');
 		var ctx = document.getElementById('ctx').getContext('2d');
 
 		// Get screen resolution
 		var screenWidth = $(window).width();
 		var screenHeight = $(window).height();
 
+
+		// Sign in
+		$('#signInDiv').submit(function(e) {
+			e.preventDefault();
+
+			socket.emit('sign-in', {username: $('#signInDiv-username').val(), password: $('#signInDiv-password').val()});
+		});
+		socket.on('sign-in-response', function(data) {
+			if(data.success) {
+				$('#signInDiv').hide();
+				$('#gameDiv').show();
+			}
+			else
+				$('#alert').text('Invalid username/password');
+		});
+
+
+		// Also, when the page is reloaded on while on the gameDiv, the sign in screen is shown but ball is still visible
 		// ***************Scale position of elements to be the same throughout every screen resolution*************
 
 		// Canvas properties

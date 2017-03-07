@@ -24,7 +24,7 @@
 		<a href="startmenu.html"><button>Back</button></a>
 
 	<script>
-		var socket = io();
+		var socket = io('/sign_up');
 
 		var $username = $('#username');
 		var $password = $('#password');
@@ -32,21 +32,17 @@
 		var $alert = $('p');
 
 		$('#sign-up-form').submit(function(e) {
+			e.preventDefault();
 
-			if($username.val() === '' || $password.val() === '' || $retype_password.val() === '') {
-				e.preventDefault();
+			if($username.val() === '' || $password.val() === '' || $retype_password.val() === '')
 				$alert.text('Fields cannot be left empty.');
-			}
 			else if($password.val() !== $retype_password.val()) {
-				e.preventDefault();
 				$alert.text('Passwords must match.');
 				$password.css('border-color', 'red');
 				$retype_password.css('border-color', 'red');
 			}
-			else {
-				e.preventDefault();
+			else
 				socket.emit('sign-up', {username: $username.val(), password: $password.val()});
-			}
 		});
 
 		socket.on('sign-up-response', function(data) {

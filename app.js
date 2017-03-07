@@ -26,6 +26,10 @@ app.get('/signup.html', function(req, res) {
 	res.sendFile(path.join(__dirname + '/signup.html'));
 });
 
+// Custom namespaces
+var sign_up_nsp = io.of('/sign_up');
+var game_nsp = io.of('/game');
+
 var port = process.env.PORT || 8888;
 server.listen(port, function() {
 	console.log('Server listening on port ' + port);
@@ -170,7 +174,7 @@ Ball.update = function() {
 	return pack;
 };
 
-// Sign up checks
+// Sign up checks - check if a username is taken
 var isUsernameTaken = function(data, cb) {
 	var query = client.query('SELECT * FROM account');
 	var match = false;
@@ -188,8 +192,28 @@ var isUsernameTaken = function(data, cb) {
 	});
 };
 
-io.on('connection', function(socket) {
-	console.log('User connected');
+// Sign in: check if username exists, and if that username matches the password
+var usernamePasswordMatch = function(data, cb) {
+	var query = client.query('SELECT * FROM ACCOUNT WHERE username = ' + '\'' + data.username + '\'');
+	var match = false;
+
+	query.on('row', function(row) {
+		if(row.password === data.password)
+			match = true;
+	});
+	query.on('end', function() {
+		if(match)
+			cb(true);
+		else
+			cb(false);
+	});
+};
+
+
+// Namespaces for organization
+// Sign in and Game namespace
+game_nsp.on('connection', function(socket) {
+	console.log('User connected to game namespace');
 	numOfPlayers += 1;
 	playerNumber += 1;
 	socket.id = Math.random();
@@ -202,7 +226,27 @@ io.on('connection', function(socket) {
 		playerNumber = playerNumber % 4;
 	Ball.onConnect(socket, playerNumber);
 
+	// Sign In
+	socket.on('sign-in', function(data) {
+		usernamePasswordMatch(data, function(res) {
+			if(res)
+				socket.emit('sign-in-response', {success: true});
+			else
+				socket.emit('sign-in-response', {success: false});
+		});
+	});
 
+	socket.on('disconnect', function() {
+		console.log('User disconnected from game namespace');
+		Ball.onDisconnect(socket);
+		delete SOCKET_LIST[socket.id];
+		numOfPlayers -= 1;
+	});
+});
+
+// Sign up namespace
+sign_up_nsp.on('connection', function(socket) {
+	console.log('User connected to sign up namespace');
 
 	socket.on('sign-up', function(data) {
 		isUsernameTaken(data, function(res) {
@@ -215,13 +259,8 @@ io.on('connection', function(socket) {
 		});
 	});
 
-
-
 	socket.on('disconnect', function() {
-		console.log('User disconnected');
-		Ball.onDisconnect(socket);
-		delete SOCKET_LIST[socket.id];
-		numOfPlayers -= 1;
+		console.log('User disconnected from sign up namespace');
 	});
 });
 
