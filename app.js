@@ -2,8 +2,8 @@
 var express = require('express');
 var app = express();
 var http = require('http');
-var server = http.createServer(app);
-var io = require('socket.io').listen(server);
+var server = http.Server(app);
+var io = require('socket.io')(server);
 var path = require('path');
 var pg = require('pg');
 
@@ -17,17 +17,18 @@ app.use(express.static(path.join(__dirname + '/public')));
 
 // Routing
 app.get('/', function(req, res) {
-	res.sendFile(path.join(__dirname + '/startmenu.html'));
+	res.sendFile(path.join(__dirname + '/boatonline.html'));
 });
-app.get('/startmenu.html', function(req, res) {
-	res.sendFile(path.join(__dirname + '/startmenu.html'));
+app.get('/signup', function(req, res) {
+	res.sendFile(path.join(__dirname + '/boatonline-signup.html'));
 });
-app.get('/signup.html', function(req, res) {
-	res.sendFile(path.join(__dirname + '/signup.html'));
+app.get('/game', function(req, res) {
+	res.sendFile(path.join(__dirname + '/boatonline-game.html'));
 });
 
 // Custom namespaces
-var sign_up_nsp = io.of('/sign_up');
+var sign_in_nsp = io.of('/signin');
+var sign_up_nsp = io.of('/signup');
 var game_nsp = io.of('/game');
 
 var port = process.env.PORT || 8888;
@@ -175,13 +176,13 @@ Ball.update = function() {
 };
 
 // Sign up checks - check if a username is taken
-var isUsernameTaken = function(data, cb) {
+var isUsernameEmailTaken = function(data, cb) {
 	var query = client.query('SELECT * FROM account');
 	var match = false;
 
 	// If there's an existing username, then fail sign up
 	query.on('row', function(row) {
-		if(row.username === data.username)
+		if(row.username === data.username || row.email === data.email)
 			match = true;
 	});
 	query.on('end', function() {
@@ -194,7 +195,7 @@ var isUsernameTaken = function(data, cb) {
 
 // Sign in: check if username exists, and if that username matches the password
 var usernamePasswordMatch = function(data, cb) {
-	var query = client.query('SELECT * FROM ACCOUNT WHERE username = ' + '\'' + data.username + '\'');
+	var query = client.query('SELECT * FROM account WHERE username = ' + '\'' + data.username + '\'');
 	var match = false;
 
 	query.on('row', function(row) {
@@ -211,9 +212,46 @@ var usernamePasswordMatch = function(data, cb) {
 
 
 // Namespaces for organization
-// Sign in and Game namespace
+// Default namespace ('/') -> io.on('connection, function(socket)...)
+sign_in_nsp.on('connection', function(socket) {
+	console.log('User connected to sign namespace');
+	
+	// Sign In
+	socket.on('sign-in', function(data) {
+		usernamePasswordMatch(data, function(res) {
+			if(res) {
+				socket.emit('sign-in-response', {success: true});
+			}
+			else {
+				socket.emit('sign-in-response', {success: false});
+			}
+		});
+	});
+
+	socket.on('disconnect', function() {
+		console.log('User disconnected from sign namespace');
+	});
+});
+
+// Sign up namespace
+sign_up_nsp.on('connection', function(socket) {
+	
+	socket.on('sign-up', function(data) {
+		isUsernameEmailTaken(data, function(res) {
+			if(res) {
+				client.query('INSERT INTO account VALUES (\'' + data.email + '\', \'' + data.username + '\', \'' + data.password + '\')');
+				socket.emit('sign-up-response', {success: true});
+			}
+			else
+				socket.emit('sign-up-response', {success: false});
+		});
+	});
+});
+
+// Game namespace
 game_nsp.on('connection', function(socket) {
 	console.log('User connected to game namespace');
+
 	numOfPlayers += 1;
 	playerNumber += 1;
 	socket.id = Math.random();
@@ -226,41 +264,11 @@ game_nsp.on('connection', function(socket) {
 		playerNumber = playerNumber % 4;
 	Ball.onConnect(socket, playerNumber);
 
-	// Sign In
-	socket.on('sign-in', function(data) {
-		usernamePasswordMatch(data, function(res) {
-			if(res)
-				socket.emit('sign-in-response', {success: true});
-			else
-				socket.emit('sign-in-response', {success: false});
-		});
-	});
-
 	socket.on('disconnect', function() {
 		console.log('User disconnected from game namespace');
 		Ball.onDisconnect(socket);
 		delete SOCKET_LIST[socket.id];
 		numOfPlayers -= 1;
-	});
-});
-
-// Sign up namespace
-sign_up_nsp.on('connection', function(socket) {
-	console.log('User connected to sign up namespace');
-
-	socket.on('sign-up', function(data) {
-		isUsernameTaken(data, function(res) {
-			if(res) {
-				client.query('INSERT INTO account VALUES (\'' + data.username + '\', \'' + data.password + '\')');
-				socket.emit('sign-up-response', {success: true});
-			}
-			else
-				socket.emit('sign-up-response', {success: false});
-		});
-	});
-
-	socket.on('disconnect', function() {
-		console.log('User disconnected from sign up namespace');
 	});
 });
 
